@@ -120,6 +120,13 @@ const Cart = () => {
           0
         );
 
+        // Get store name
+        const { data: storeData } = await supabase
+          .from("stores")
+          .select("name")
+          .eq("id", storeId)
+          .single();
+
         const { data: order, error: orderError } = await supabase
           .from("orders")
           .insert({
@@ -150,6 +157,30 @@ const Cart = () => {
           .insert(orderItems);
 
         if (itemsError) throw itemsError;
+
+        // Send email notification
+        try {
+          await supabase.functions.invoke("send-order-email", {
+            body: {
+              customerEmail: user.email,
+              customerPhone: phone,
+              deliveryAddress: address,
+              storeName: storeData?.name || "Store",
+              totalAmount: storeTotal,
+              latitude: location.lat,
+              longitude: location.lng,
+              orderItems: (items as any[]).map((item) => ({
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price * item.quantity,
+              })),
+              orderId: order.id,
+            },
+          });
+          console.log("Order email sent successfully");
+        } catch (emailError) {
+          console.error("Failed to send order email:", emailError);
+        }
       }
 
       // Clear cart
