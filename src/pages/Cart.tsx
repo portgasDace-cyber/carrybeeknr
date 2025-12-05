@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Minus, Trash2, ArrowLeft, ShoppingBag } from "lucide-react";
+import { Plus, Minus, Trash2, ArrowLeft, ShoppingBag, MapPin, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -17,6 +17,32 @@ const Cart = () => {
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setLocationLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+        toast.success("Location captured successfully!");
+        setLocationLoading(false);
+      },
+      (error) => {
+        toast.error("Unable to get your location. Please enable location access.");
+        setLocationLoading(false);
+      },
+      { enableHighAccuracy: true }
+    );
+  };
 
   useEffect(() => {
     const savedCart = JSON.parse(localStorage.getItem("cart") || "[]");
@@ -65,6 +91,11 @@ const Cart = () => {
       return;
     }
 
+    if (!location) {
+      toast.error("Please share your location for delivery");
+      return;
+    }
+
     if (cart.length === 0) {
       toast.error("Your cart is empty");
       return;
@@ -98,6 +129,8 @@ const Cart = () => {
             delivery_address: address,
             phone: phone,
             status: "pending",
+            latitude: location.lat,
+            longitude: location.lng,
           })
           .select()
           .single();
@@ -280,6 +313,31 @@ const Cart = () => {
                       className="mt-1"
                       rows={3}
                     />
+                  </div>
+
+                  <div>
+                    <Label>Delivery Location</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full mt-1 gap-2"
+                      onClick={getCurrentLocation}
+                      disabled={locationLoading}
+                    >
+                      {locationLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <MapPin className="w-4 h-4" />
+                      )}
+                      {location
+                        ? "Location Captured ✓"
+                        : "Share Current Location"}
+                    </Button>
+                    {location && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Lat: {location.lat.toFixed(6)}, Lng: {location.lng.toFixed(6)}
+                      </p>
+                    )}
                   </div>
                 </div>
 

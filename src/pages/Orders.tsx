@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Package, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Clock, Package, CheckCircle2, MapPin } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
 interface Order {
   id: string;
@@ -13,6 +15,8 @@ interface Order {
   status: string;
   delivery_address: string;
   created_at: string;
+  latitude: number | null;
+  longitude: number | null;
   stores: {
     name: string;
   };
@@ -52,7 +56,7 @@ const Orders = () => {
       .order("created_at", { ascending: false });
 
     if (!error && data) {
-      setOrders(data);
+      setOrders(data as Order[]);
     }
     setLoading(false);
   };
@@ -83,6 +87,21 @@ const Orders = () => {
       default:
         return <Clock className="w-4 h-4" />;
     }
+  };
+
+  const markAsDelivered = async (orderId: string) => {
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: "delivered" })
+      .eq("id", orderId);
+
+    if (error) {
+      toast.error("Failed to update order status");
+      return;
+    }
+
+    toast.success("Order marked as delivered!");
+    fetchOrders();
   };
 
   return (
@@ -150,6 +169,18 @@ const Orders = () => {
                         {order.delivery_address}
                       </p>
 
+                      {order.latitude && order.longitude && (
+                        <a
+                          href={`https://www.google.com/maps?q=${order.latitude},${order.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                          <MapPin className="w-3 h-3" />
+                          View on Map
+                        </a>
+                      )}
+
                       <p className="text-xs text-muted-foreground">
                         Ordered on{" "}
                         {new Date(order.created_at).toLocaleDateString("en-IN", {
@@ -162,10 +193,20 @@ const Orders = () => {
                       </p>
                     </div>
 
-                    <div className="text-left md:text-right">
+                    <div className="text-left md:text-right space-y-2">
                       <p className="text-2xl font-bold text-primary">
                         ₹{order.total_amount}
                       </p>
+                      {order.status === "pending" && (
+                        <Button
+                          size="sm"
+                          onClick={() => markAsDelivered(order.id)}
+                          className="bg-green-500 hover:bg-green-600"
+                        >
+                          <CheckCircle2 className="w-4 h-4 mr-1" />
+                          Mark as Delivered
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
