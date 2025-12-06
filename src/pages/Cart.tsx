@@ -5,10 +5,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Minus, Trash2, ArrowLeft, ShoppingBag, MapPin, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Plus, Minus, Trash2, ArrowLeft, ShoppingBag, MapPin, Loader2, QrCode, Check } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import paymentQR from "@/assets/payment-qr.jpeg";
+
+// Calculate distance between two points using Haversine formula (returns km)
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
+// Calculate delivery fee based on distance (₹10 per km, minimum ₹20)
+const calculateDeliveryFee = (distanceKm: number): number => {
+  const fee = Math.ceil(distanceKm) * 10;
+  return Math.max(fee, 20);
+};
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -19,6 +40,11 @@ const Cart = () => {
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
+  const [storeLocation, setStoreLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [deliveryFee, setDeliveryFee] = useState(20);
+  const [distance, setDistance] = useState<number | null>(null);
 
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -29,18 +55,48 @@ const Cart = () => {
     setLocationLoading(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setLocation({
+        const newLocation = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
-        });
+        };
+        setLocation(newLocation);
         toast.success("Location captured successfully!");
         setLocationLoading(false);
+        
+        // Calculate delivery fee if store location is available
+        if (storeLocation) {
+          const dist = calculateDistance(
+            newLocation.lat, 
+            newLocation.lng, 
+            storeLocation.lat, 
+            storeLocation.lng
+          );
+          setDistance(dist);
+          setDeliveryFee(calculateDeliveryFee(dist));
+        }
       },
       (error) => {
-        toast.error("Unable to get your location. Please enable location access.");
+        console.error("Geolocation error:", error);
+        let errorMessage = "Unable to get your location.";
+        switch(error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location permission denied. Please enable location access in your browser settings.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information unavailable. Please try again.";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out. Please try again.";
+            break;
+        }
+        toast.error(errorMessage);
         setLocationLoading(false);
       },
-      { enableHighAccuracy: true }
+      { 
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      }
     );
   };
 
@@ -51,7 +107,36 @@ const Cart = () => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
     });
+
+    // Fetch store location for delivery fee calculation
+    if (savedCart.length > 0) {
+      const storeId = savedCart[0].storeId;
+      supabase
+        .from("stores")
+        .select("latitude, longitude")
+        .eq("id", storeId)
+        .single()
+        .then(({ data }) => {
+          if (data?.latitude && data?.longitude) {
+            setStoreLocation({ lat: Number(data.latitude), lng: Number(data.longitude) });
+          }
+        });
+    }
   }, []);
+
+  // Recalculate delivery fee when location or store location changes
+  useEffect(() => {
+    if (location && storeLocation) {
+      const dist = calculateDistance(
+        location.lat, 
+        location.lng, 
+        storeLocation.lat, 
+        storeLocation.lng
+      );
+      setDistance(dist);
+      setDeliveryFee(calculateDeliveryFee(dist));
+    }
+  }, [location, storeLocation]);
 
   const updateQuantity = (productId: string, change: number) => {
     const newCart = cart.map((item) => {
@@ -79,7 +164,7 @@ const Cart = () => {
     return cart.reduce((total, item) => total + item.price * item.quantity, 0);
   };
 
-  const handlePlaceOrder = async () => {
+  const handleProceedToPayment = () => {
     if (!user) {
       toast.error("Please login to place an order");
       navigate("/auth");
@@ -101,6 +186,16 @@ const Cart = () => {
       return;
     }
 
+    setShowPaymentModal(true);
+  };
+
+  const handleConfirmPayment = async () => {
+    setPaymentConfirmed(true);
+    setShowPaymentModal(false);
+    await handlePlaceOrder();
+  };
+
+  const handlePlaceOrder = async () => {
     setLoading(true);
 
     try {
@@ -120,6 +215,8 @@ const Cart = () => {
           0
         );
 
+        const totalWithDelivery = storeTotal + deliveryFee;
+
         // Get store name
         const { data: storeData } = await supabase
           .from("stores")
@@ -132,12 +229,12 @@ const Cart = () => {
           .insert({
             user_id: user.id,
             store_id: storeId,
-            total_amount: storeTotal,
+            total_amount: totalWithDelivery,
             delivery_address: address,
             phone: phone,
             status: "pending",
-            latitude: location.lat,
-            longitude: location.lng,
+            latitude: location!.lat,
+            longitude: location!.lng,
           })
           .select()
           .single();
@@ -166,9 +263,11 @@ const Cart = () => {
               customerPhone: phone,
               deliveryAddress: address,
               storeName: storeData?.name || "Store",
-              totalAmount: storeTotal,
-              latitude: location.lat,
-              longitude: location.lng,
+              totalAmount: totalWithDelivery,
+              deliveryFee: deliveryFee,
+              distance: distance ? distance.toFixed(2) : "N/A",
+              latitude: location!.lat,
+              longitude: location!.lng,
               orderItems: (items as any[]).map((item) => ({
                 name: item.name,
                 quantity: item.quantity,
@@ -310,13 +409,15 @@ const Cart = () => {
                     <span className="font-medium">₹{getTotalAmount()}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Delivery Fee</span>
-                    <span className="font-medium">₹30</span>
+                    <span className="text-muted-foreground">
+                      Delivery Fee {distance && `(${distance.toFixed(1)} km)`}
+                    </span>
+                    <span className="font-medium">₹{deliveryFee}</span>
                   </div>
                   <div className="border-t pt-3 flex justify-between">
                     <span className="font-semibold">Total</span>
                     <span className="font-bold text-lg text-primary">
-                      ₹{getTotalAmount() + 30}
+                      ₹{getTotalAmount() + deliveryFee}
                     </span>
                   </div>
                 </div>
@@ -373,18 +474,75 @@ const Cart = () => {
                 </div>
 
                 <Button
-                  className="w-full"
+                  className="w-full gap-2"
                   size="lg"
-                  onClick={handlePlaceOrder}
+                  onClick={handleProceedToPayment}
                   disabled={loading}
                 >
-                  {loading ? "Placing Order..." : "Place Order"}
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Placing Order...
+                    </>
+                  ) : (
+                    <>
+                      <QrCode className="w-4 h-4" />
+                      Proceed to Payment
+                    </>
+                  )}
                 </Button>
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
+
+      {/* Payment QR Modal */}
+      <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl font-outfit">
+              Scan & Pay ₹{getTotalAmount() + deliveryFee}
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              Scan the QR code below using any UPI app to complete payment
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-col items-center space-y-4">
+            <div className="bg-white p-4 rounded-xl shadow-lg">
+              <img 
+                src={paymentQR} 
+                alt="Payment QR Code" 
+                className="w-64 h-auto rounded-lg"
+              />
+            </div>
+            
+            <div className="text-center space-y-1">
+              <p className="text-sm text-muted-foreground">UPI ID</p>
+              <p className="font-mono font-semibold">9787141556-1@okbizaxis</p>
+            </div>
+
+            <div className="w-full space-y-3 pt-4">
+              <Button 
+                className="w-full gap-2" 
+                size="lg"
+                onClick={handleConfirmPayment}
+              >
+                <Check className="w-4 h-4" />
+                I have completed the payment
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={() => setShowPaymentModal(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

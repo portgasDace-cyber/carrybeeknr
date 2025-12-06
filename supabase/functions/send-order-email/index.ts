@@ -20,6 +20,8 @@ interface OrderEmailRequest {
   deliveryAddress: string;
   storeName: string;
   totalAmount: number;
+  deliveryFee: number;
+  distance: string;
   latitude: number | null;
   longitude: number | null;
   orderItems: OrderItem[];
@@ -38,6 +40,8 @@ const handler = async (req: Request): Promise<Response> => {
       deliveryAddress,
       storeName,
       totalAmount,
+      deliveryFee,
+      distance,
       latitude,
       longitude,
       orderItems,
@@ -113,8 +117,14 @@ const handler = async (req: Request): Promise<Response> => {
             </table>
           </div>
           
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #FDB931; margin-bottom: 10px;">🚚 Delivery Info</h3>
+            <p style="margin: 5px 0;"><strong>Distance:</strong> ${distance} km</p>
+            <p style="margin: 5px 0;"><strong>Delivery Fee:</strong> ₹${deliveryFee}</p>
+          </div>
+          
           <div style="background-color: #FDB931; padding: 15px; border-radius: 8px; text-align: center;">
-            <h3 style="color: #1A1A1A; margin: 0;">💰 Total Amount: ₹${totalAmount}</h3>
+            <h3 style="color: #1A1A1A; margin: 0;">💰 Total Amount (incl. delivery): ₹${totalAmount}</h3>
           </div>
           
           <p style="color: #666; font-size: 12px; text-align: center; margin-top: 20px;">
