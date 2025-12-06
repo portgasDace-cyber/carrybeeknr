@@ -156,6 +156,8 @@ export type Database = {
           id: string
           image_url: string | null
           is_open: boolean | null
+          latitude: number | null
+          longitude: number | null
           name: string
           phone: string | null
           rating: number | null
@@ -168,6 +170,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_open?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
           name: string
           phone?: string | null
           rating?: number | null
@@ -180,6 +184,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_open?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
           name?: string
           phone?: string | null
           rating?: number | null
