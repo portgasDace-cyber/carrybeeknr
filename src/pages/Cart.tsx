@@ -186,6 +186,14 @@ const Cart = () => {
       return;
     }
 
+    // Open UPI payment link with amount
+    const totalAmount = getTotalAmount() + deliveryFee;
+    const upiId = "9787141556-1@okbizaxis";
+    const payeeName = "Kunnathur Carry Bee";
+    const upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${totalAmount}&cu=INR`;
+    
+    // Try to open UPI app, then show modal
+    window.open(upiLink, "_blank");
     setShowPaymentModal(true);
   };
 

@@ -172,6 +172,10 @@ const StoreDetail = () => {
               <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <span>{store.address}</span>
             </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Clock className="w-4 h-4 text-primary" />
+              <span className="text-foreground font-medium">Opening Hours: 7:00 AM - 10:00 PM</span>
+            </div>
           </CardContent>
         </Card>
 

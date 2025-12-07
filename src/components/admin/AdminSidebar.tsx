@@ -22,12 +22,12 @@ export const AdminSidebar = () => {
   };
 
   return (
-    <aside className="w-64 min-h-screen bg-card border-r border-border flex flex-col">
+    <aside className="w-64 min-h-screen bg-card border-r border-border flex flex-col shrink-0">
       <div className="p-6 border-b border-border">
         <div className="flex items-center gap-3">
           <img src={beeMascot} alt="Carry Bee" className="w-10 h-10" />
           <div>
-            <h2 className="font-outfit font-bold text-lg">Admin Panel</h2>
+            <h2 className="font-outfit font-bold text-lg text-foreground">Admin Panel</h2>
             <p className="text-xs text-muted-foreground">Kunnathur Carry Bee</p>
           </div>
         </div>
