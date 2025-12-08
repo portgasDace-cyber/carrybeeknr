@@ -25,10 +25,10 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 };
 
-// Calculate delivery fee based on distance (₹10 per km, minimum ₹20)
+// Calculate delivery fee based on distance (₹10 per km)
 const calculateDeliveryFee = (distanceKm: number): number => {
   const fee = Math.ceil(distanceKm) * 10;
-  return Math.max(fee, 20);
+  return fee > 0 ? fee : 10; // Minimum ₹10 for very short distances
 };
 
 const Cart = () => {
