@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-const RESEND_API_KEY_2 = Deno.env.get("RESEND_API_KEY_2");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,17 +28,6 @@ interface OrderEmailRequest {
   orderId: string;
 }
 
-const sendEmailWithKey = async (apiKey: string, emailData: any) => {
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(emailData),
-  });
-  return res;
-};
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -148,49 +136,29 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    const emailData = {
-      from: "Kunnathur Carry Bee <onboarding@resend.dev>",
-      to: ["ravishangaraarya24@gmail.com"],
-      subject: `🐝 New Order #${orderId.slice(0, 8)} - ${storeName}`,
-      html: emailHtml,
-    };
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+      },
+      body: JSON.stringify({
+        from: "Kunnathur Carry Bee <onboarding@resend.dev>",
+        to: ["ravishangaraarya24@gmail.com"],
+        subject: `🐝 New Order #${orderId.slice(0, 8)} - ${storeName}`,
+        html: emailHtml,
+      }),
+    });
 
-    // Send email using first API key
-    let emailSent = false;
-    let responseData;
-
-    if (RESEND_API_KEY) {
-      try {
-        const res = await sendEmailWithKey(RESEND_API_KEY, emailData);
-        responseData = await res.json();
-        if (res.ok) {
-          console.log("Email sent successfully with API key 1:", responseData);
-          emailSent = true;
-        }
-      } catch (err) {
-        console.error("Failed with API key 1:", err);
-      }
+    const emailResponse = await res.json();
+    
+    if (!res.ok) {
+      throw new Error(emailResponse.message || "Failed to send email");
     }
 
-    // Try second API key if first failed or wasn't available
-    if (!emailSent && RESEND_API_KEY_2) {
-      try {
-        const res = await sendEmailWithKey(RESEND_API_KEY_2, emailData);
-        responseData = await res.json();
-        if (res.ok) {
-          console.log("Email sent successfully with API key 2:", responseData);
-          emailSent = true;
-        }
-      } catch (err) {
-        console.error("Failed with API key 2:", err);
-      }
-    }
+    console.log("Email sent successfully:", emailResponse);
 
-    if (!emailSent) {
-      throw new Error("Failed to send email with both API keys");
-    }
-
-    return new Response(JSON.stringify({ success: true, data: responseData }), {
+    return new Response(JSON.stringify({ success: true, data: emailResponse }), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
