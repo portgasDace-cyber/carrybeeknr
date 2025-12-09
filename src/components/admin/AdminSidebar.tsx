@@ -1,4 +1,4 @@
-import { Store, Package, ShoppingCart, BarChart3, Users, Home, LogOut } from "lucide-react";
+import { Store, Package, ShoppingCart, BarChart3, Home, LogOut, Sparkles } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +10,7 @@ const menuItems = [
   { title: "Stores", url: "/admin/stores", icon: Store },
   { title: "Products", url: "/admin/products", icon: Package },
   { title: "Orders", url: "/admin/orders", icon: ShoppingCart },
+  { title: "Daily Offers", url: "/admin/offers", icon: Sparkles },
 ];
 
 export const AdminSidebar = () => {
