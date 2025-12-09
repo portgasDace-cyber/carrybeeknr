@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Star, Clock, MapPin, ArrowLeft, Plus, Minus } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import ProductRequestForm from "@/components/ProductRequestForm";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -274,6 +275,11 @@ const StoreDetail = () => {
             </p>
           </div>
         )}
+
+        {/* Product Request Form */}
+        <div className="mt-8">
+          <ProductRequestForm storeId={id} storeName={store?.name} />
+        </div>
       </div>
 
       {/* Floating Cart Button */}

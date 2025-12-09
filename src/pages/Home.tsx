@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ShoppingBag, Clock, MapPin, Heart } from "lucide-react";
 import BeeAnimation from "@/components/BeeAnimation";
 import Navbar from "@/components/Navbar";
+import DailyOffers from "@/components/DailyOffers";
 import beeMascot from "@/assets/bee-mascot.png";
 
 const Home = () => {
@@ -34,6 +35,9 @@ const Home = () => {
     <div className="min-h-screen bg-gradient-to-b from-secondary/30 to-background">
       <BeeAnimation />
       <Navbar />
+
+      {/* Daily Offers Section */}
+      <DailyOffers />
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-16 md:py-24">
