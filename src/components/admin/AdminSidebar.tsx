@@ -1,9 +1,12 @@
-import { Store, Package, ShoppingCart, BarChart3, Home, LogOut, Sparkles } from "lucide-react";
+import { Store, Package, ShoppingCart, BarChart3, Home, LogOut, Sparkles, Menu, X } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import beeMascot from "@/assets/bee-mascot.png";
+import { useState } from "react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 
 const menuItems = [
   { title: "Dashboard", url: "/admin", icon: BarChart3 },
@@ -13,7 +16,7 @@ const menuItems = [
   { title: "Daily Offers", url: "/admin/offers", icon: Sparkles },
 ];
 
-export const AdminSidebar = () => {
+const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -22,8 +25,12 @@ export const AdminSidebar = () => {
     navigate("/");
   };
 
+  const handleClick = () => {
+    if (onNavigate) onNavigate();
+  };
+
   return (
-    <aside className="w-64 min-h-screen bg-card border-r border-border flex flex-col shrink-0">
+    <div className="flex flex-col h-full">
       <div className="p-6 border-b border-border">
         <div className="flex items-center gap-3">
           <img src={beeMascot} alt="Carry Bee" className="w-10 h-10" />
@@ -34,12 +41,13 @@ export const AdminSidebar = () => {
         </div>
       </div>
 
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
         {menuItems.map((item) => (
           <NavLink
             key={item.url}
             to={item.url}
             end={item.url === "/admin"}
+            onClick={handleClick}
             className={({ isActive }) =>
               cn(
                 "flex items-center gap-3 px-4 py-3 rounded-lg transition-all",
@@ -58,6 +66,7 @@ export const AdminSidebar = () => {
       <div className="p-4 border-t border-border space-y-2">
         <NavLink
           to="/"
+          onClick={handleClick}
           className="flex items-center gap-3 px-4 py-3 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"
         >
           <Home className="w-5 h-5" />
@@ -71,6 +80,37 @@ export const AdminSidebar = () => {
           <span className="font-medium">Logout</span>
         </button>
       </div>
-    </aside>
+    </div>
+  );
+};
+
+export const AdminSidebar = () => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      {/* Mobile Header with Menu Button */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border px-4 py-3 flex items-center gap-3">
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="shrink-0">
+              <Menu className="w-6 h-6" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="p-0 w-72">
+            <SidebarContent onNavigate={() => setOpen(false)} />
+          </SheetContent>
+        </Sheet>
+        <div className="flex items-center gap-2">
+          <img src={beeMascot} alt="Carry Bee" className="w-8 h-8" />
+          <span className="font-outfit font-bold text-foreground">Admin Panel</span>
+        </div>
+      </div>
+
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex w-64 min-h-screen bg-card border-r border-border flex-col shrink-0">
+        <SidebarContent />
+      </aside>
+    </>
   );
 };
